@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Cast Your Vote{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-10 offset-md-1">
+    <div class="text-center mb-4">
+      <h1>Guild Election 2025</h1>
+      <p class="lead">Please make your selection for each position and cast your vote.</p>
+    </div>
+
+    <form method="POST" action="{% url 'cast_ballot_view' %}">
+      {% csrf_token %}
+
+      {% for position in positions %}
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-dark text-white">
+            <h3 class="mb-0">{{ position.name }}</h3>
+          </div>
+          <div class="card-body">
+            
+            {% for candidate in position.candidates.all %}
+              <div class="form-check p-3 border-bottom">
+                <input class="form-check-input" 
+                       type="radio" 
+                       name="{{ position.id }}" 
+                       id="cand-{{ candidawte.id }}" 
+                       value="{{ candidate.id }}" 
+                       required>
+                
+                <label class="form-check-label ms-2" for="cand-{{ candidate.id }}">
+                  <h5 class="fw-bold">{{ candidate.name }}</h5>
+                  <p class="mb-1">{{ candidate.bio }}</p>
+                </label>
+              </div>
+            {% endfor %}
+            </div>
+        </div>
+      {% endfor %}
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-success btn-lg p-3">
+          CAST MY VOTE
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}

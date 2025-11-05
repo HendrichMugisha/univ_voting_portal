@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Active Elections{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-10 offset-md-1">
+    <div class="text-center mb-4">
+      <h1>Active Elections</h1>
+      <p class="lead">Please select an election to cast your vote.</p>
+    </div>
+
+    {% if active_elections %}
+      <div class="list-group shadow-sm">
+        {% for election, has_voted in active_elections %}
+          <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3">
+            <div>
+              <h5 class="mb-1 fw-bold">{{ election.name }}</h5>
+              <small>Closes: {{ election.end_time|date:"F d, Y \a\t P" }}</small>
+            </div>
+            
+            {% if has_voted %}
+              <span class="badge bg-success p-2">VOTE RECORDED</span>
+            {% else %}
+              <a href="{% url 'ballot_view' election.id %}" class="btn btn-primary">
+                Vote Now
+              </a>
+            {% endif %}
+
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info text-center p-5">
+        <h1 class="alert-heading">No Active Elections</h1>
+        <p class="lead">There are no elections available to vote in at this time.</p>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
