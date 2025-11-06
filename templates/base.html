@@ -19,24 +19,27 @@
 
       <a class="navbar-brand d-flex align-items-center" href="{% url 'election_list_view' %}">
         <img src="{% static 'images/logo.png' %}" alt="University Logo" height="80" class="me-3">
-        
-        <!-- <span class="fs-5 d-none d-md-inline">Gulu University Election Portal</span> -->
-        
-        <span class="fs-5 d-inline">Gulu University Election Portal</span>
-      </a>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+        <span class="d-none d-md-inline">
+          Gulu University Election Portal
+        </span>
+        <span class="d-none d-sm-inline d-md-none">
+          Gulu Portal
+        </span>
 
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto align-items-center">
-          {% if user.is_authenticated %}
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+          aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto align-items-center">
+            {% if user.is_authenticated %}
             {% if user.is_staff %}
-              <li class="nav-item">
-                <a class="nav-link" href="{% url 'results_dashboard' %}">View Results</a>
-              </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'results_dashboard' %}">View Results</a>
+            </li>
             {% endif %}
             <li class="nav-item">
               <span class="navbar-text me-3">
@@ -46,13 +49,13 @@
             <li class="nav-item">
               <a class="btn btn-outline-light" href="{% url 'logout_view' %}">Logout</a>
             </li>
-          {% else %}
+            {% else %}
             <li class="nav-item">
               <a class="btn btn-outline-light" href="{% url 'login_view' %}">Login</a>
             </li>
-          {% endif %}
-        </ul>
-      </div>
+            {% endif %}
+          </ul>
+        </div>
     </div>
   </nav>
 
@@ -85,7 +88,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
     crossorigin="anonymous"></script>
-    
+
   {% block scripts %}
   {% endblock %}
 </body>
