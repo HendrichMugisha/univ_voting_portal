@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from votingapp import views  # Assuming your app is named 'voting_app'
+from . import views 
 
 urlpatterns = [
 

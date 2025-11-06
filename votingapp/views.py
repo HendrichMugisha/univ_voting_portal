@@ -1,17 +1,41 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout
+# from django.contrib.auth. import authenticate, login, logout, User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
-from .import tasks
+from functools import wraps
+# from .import tasks
 
 #  importing models
-from .models import StudentProfile, Election, Position, Candidate
+from .models import StudentProfile, Election, Position, Candidate, Vote
 
-# Importing the Celery task to handle vote tallying task
-from .tasks import process_vote_task
+# Importing the Celery task to handle vote tallying task -- for later
+# from .tasks import process_vote_task
 
+# this is a decorator to check if the logged in user has a profile-------
+
+def profile_required(view_func):
+
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        try:
+            # Check if the profile exists
+            profile = request.user.studentprofile
+            
+        # attaching the profile to the request object so the view function doesnt even look for  it
+            request.profile = profile 
+            
+        except StudentProfile.DoesNotExist:
+            # If the profile doesn't exist, log them out.
+            messages.error(request, 'Your student profile does not exist. Contact admin.')
+            return redirect('logout_view')
+        
+        # If the try block succeeds, run the original view function
+        return view_func(request, *args, **kwargs)
+    
+    return _wrapped_view
 
 
 # --- 1. Authentication Views ---------------------------------------------------
@@ -29,13 +53,15 @@ def login_view(request):
             # if they exist simply log them in
             login(request, user)
             # Redirect to the main voting portal after successful login
-            return redirect('ballot_view')
+            return redirect('election_list_view')
         
         else:
             # else show an error on the template
             messages.error(request, 'Invalid username or password. Please try again.')
             
     return render(request, 'login.html')
+
+
 
 # if the user clicks the logout button
 def logout_view(request):
@@ -51,115 +77,162 @@ def logout_view(request):
 
 # --- 2. Voting Portal Views -------------------------------------------------------------
 
-@login_required(login_url='login_view') # Redirect to login if not authenticated
-def ballot_view(request):
 
-    try:
-        # try creating a profile vairable for the logged in user
-        profile = request.user.studentprofile
+# ----------view for all the elections
+
+@login_required(login_url='login_view')
+@profile_required  
+def election_list_view(request):
+    # grab the timezone aware time
+    now = timezone.now()
+    
+    # check for active elections
+    active_elections_qs = Election.objects.filter(
+        start_time__lte=now, #start time is in the past
+        end_time__gte=now #end time is in the future
+    ).order_by('end_time')
+
+    
+  # Get the list of elections the user has *already* voted in
+    voted_in = request.profile.voted_in_elections.all() 
+    # nb the profile was attached to the request object during the profile check 
+
+    # Create a list of tuples: (election, has_voted)
+    active_elections_data = [
+        # this is a list comprehension that creates tuples each with an active election and a corresponding boolean value of whether it is among those that user has already voted in 
         
-    except StudentProfile.DoesNotExist:
-        # This handles the case where a User exists but a Profile doesn't
-        messages.error(request, 'Your student profile does not exist. Contact admin.')
-        # send them back since they cannot vote
-        return redirect('logout_view')
+        (election, election in voted_in) 
+        for election in active_elections_qs
+    ]
 
-    # --- Eligibility Checks ---
+# this will be available to the election list template
+    context = {
+        'active_elections_data': active_elections_data
+    }
+    return render(request, 'election_list.html', context)
+
+# ---------the ballot view for one specific election------------------------------
+@login_required(login_url='login_view')
+@profile_required
+def ballot_view(request, election_id): #Takes election_id of the election tha has been selected by the user in the frontend
+      
+    now = timezone.now()
+    
+    # Get the specific election requested by the user, but ONLY if it's currently active
+    election = get_object_or_404(
+        Election,
+        pk=election_id, #primary key is the election id requested by the user
+        
+        # this hides the ballot for an election that has closed even if the user guesses the url
+        start_time__lte=now,
+        end_time__gte=now
+    )
+    
+    profile = request.profile
+
+    # --- Eligibility Checks (For Demo)--- 
     if not profile.is_eligible:
         return render(request, 'ineligible.html')
-        
-    if profile.has_voted:
+
+    # Checks if the requested election is in the user's "voted_in" list
+    if election in profile.voted_in_elections.all():
         return render(request, 'already_voted.html')
 
-    # --- Check if Election is Active ---
-    now = timezone.now()
-    try:
-        # Find the currently active election and store it in the election variable
-        election = Election.objects.get(
-            name="Guild Election 2025", # this is the name of the election
-            start_time__lte=now,  # Election start time must be in the past or exactly right now
-            end_time__gte=now       # Election has not ended yet
-        )
-    except Election.DoesNotExist:
-        return render(request, 'election_inactive.html')
-        
-        
-    # --- All checks passed! Fetch the ballot data. ---
-    
-    # .prefetch_related('candidates') is a huge performance optimization.
-    # It gets all candidates for all positions in one extra DB query,
-    # preventing thousands of queries in the template.
+    # getting all the candidates for all the positions for this particular election 
     positions = election.positions.prefetch_related('candidates').all()
 
+    # handing this information to the frontend
     context = {
+        'election': election,
         'positions': positions
     }
     return render(request, 'voting_portal.html', context)
 
-
+#-------------------casting the ballot----------------
 @login_required(login_url='login_view')
-def cast_ballot_view(request):
- 
-    if request.method != 'POST':
-        # If someone tries to access this URL directly, send them back
-        return redirect('ballot_view')
+@profile_required
+def cast_ballot_view(request, election_id): #Takes election_id
 
-    vote_data = {}
+    if request.method != 'POST':
+        # If someone tries to access this URL directly, send them back ie, we only want post requests
+        return redirect('election_list_view')
+
+    now = timezone.now()
+   
+
     
-    # --- CRITICAL SECTION: Prevent Double-Voting ---
     try:
-        # .atomic() ensures that this entire block either
-        # completes successfully or fails completely.
+
+        
+        # --- CRITICAL SECTION: if anything happens inside this code block, the db rolls back all changes
+        # this prevents double voting, and prevents a user from being marked as voted if their vote doesnt save
+        
         with transaction.atomic():
             
-            # 1. Lock the user's profile row in the database.
-            # No other request can modify this user's profile
-            # until this transaction is finished.
+        # 1. get the election and check if its still active
+            election = get_object_or_404(
+            Election,
+            pk=election_id,
+            start_time__lte=now,
+            end_time__gte=now
+        )
+
+            
+            # 2. Lock the user's profile row so nothing else touches it till the transaction is finished
             profile = StudentProfile.objects.select_for_update().get(user=request.user)
 
-            # 2. Double-check if they have voted
-            # (in case they clicked 'submit' in two tabs at once)
-            if profile.has_voted_guild_2025:
+            # 3. Double-check if they have voted
+            if election in profile.voted_in_elections.all():
                 messages.error(request, 'Your vote has already been recorded.')
-                return redirect('ballot_view')
+                return redirect('election_list_view')
             
-            # 3. Check that the election is still active
-            now = timezone.now()
-            election = Election.objects.get(
-                name="Guild Election 2025",
-                start_time__lte=now,
-                end_time__gte=now
-            )
+            # 4. Mark the user as having voted *in this election*
+            profile.voted_in_elections.add(election)
             
-            # 4. Mark the user as having voted.
-            profile.has_voted_guild_2025 = True
-            profile.save(update_fields=['has_voted_guild_2025'])
-            
-            # 5. Get the vote data *after* confirming eligibility
+            #5. get the vote data from request.post
+            vote_data = {}
+
             for key, value in request.POST.items():
                 # The keys for positions are their IDs (which are numbers)
                 if key.isdigit():
                     vote_data[key] = value
+                    
+            # 6. --------   VOTE PROCESSING---------
+            votes_to_create = []
+            
+            # create the vote object for the users submission
+            for position_id, candidate_id in vote_data.items():
+                votes_to_create.append(
+                    Vote(
+                        position_id=position_id,
+                        candidate_id=candidate_id
+                    )
+                )
+                
+                # check if the user was a dummy and tried to submit an empty ballot
+            if votes_to_create:
+                # grab all the users votes for all the candidates and stamp them into the database at once
+                Vote.objects.bulk_create(votes_to_create)
+            else:
+                raise Exception("Empty ballot submission is not allowed.")
 
-        # --- END OF CRITICAL SECTION ---
+        # --- END OF TRANSACTION ---
+        # If we get here, all database writes were successful.
         # The database lock on the user's profile is now released.
 
     except Election.DoesNotExist:
         messages.error(request, 'The election has just closed. Your vote was not counted.')
-        return redirect('ballot_view')
+        return redirect('election_list_view')
     except Exception as e:
         messages.error(request, f'An unexpected error occurred. Please try again. {e}')
-        return redirect('ballot_view')
-
-    # --- 6. Pass the (now verified) vote data to Celery ---
-    # This task runs in the background. The user doesn't wait for it.
-    process_vote_task.delay(vote_data)
+        return redirect('election_list_view')
 
     # 7. Send the user to a "Thank You" page.
     return redirect('thank_you_view')
 
 
-# --- 3 After voting views------------------------------------------------------------
+# --- 3. After-Voting View ---
+
 @login_required(login_url='login_view')
 def thank_you_view(request):
     """
