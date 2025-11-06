@@ -21,10 +21,11 @@
             </div>
             
             {% if has_voted %}
-              <span class="badge bg-success p-2">VOTE RECORDED</span>
+              <span class="badge bg-success p-2 d-block d-md-inline">VOTE RECORDED</span>
             {% else %}
               <a href="{% url 'ballot_view' election.id %}" class="btn btn-primary">
-                Vote Now
+                 Vote Now
+
               </a>
             {% endif %}
 

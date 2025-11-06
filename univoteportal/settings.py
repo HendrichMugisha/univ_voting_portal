@@ -122,7 +122,11 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-
+# this is to load the static files
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 # This tells Celery where the "mailbox" (Redis) is.
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'

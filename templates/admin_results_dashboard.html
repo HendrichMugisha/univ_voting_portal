@@ -3,20 +3,34 @@
 
 {% block content %}
 <div class="row">
-  <div class="col-md-8 offset-md-2">
+  <div class="col-md-10 offset-md-1">
     <div class="card shadow-sm">
-      <div class="card-header">
-        <h2>Election Results Dashboard</h2>
+      <div class="card-header bg-dark text-white">
+        <h2 class="mb-0">Election Results Dashboard</h2>
       </div>
       <div class="card-body">
-        <p>Select an election to view the live tally.</p>
-        <div class="list-group">
+        <p class="lead">Select an election to view the live tally.</p>
+        
+        <div class="list-group list-group-flush">
+          
           {% for election in elections %}
-            <a href="{% url 'election_results' election.id %}" class="list-group-item list-group-item-action">
-              {{ election.name }}
+            <a href="{% url 'election_results' election.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
+              
+              <div>
+                <h5 class="mb-1 fw-bold">{{ election.name }}</h5>
+                <small class="text-muted">
+                  {{ election.start_time|date:"F d, Y" }} – {{ election.end_time|date:"F d, Y" }}
+                </small>
+              </div>
+              
+              <span class="badge bg-primary rounded-pill p-2">
+                View Tally
+              </span>
             </a>
           {% empty %}
-            <p>No elections found.</p>
+            <div class="list-group-item">
+              <p class="mb-0 text-muted">No elections found.</p>
+            </div>
           {% endfor %}
         </div>
       </div>

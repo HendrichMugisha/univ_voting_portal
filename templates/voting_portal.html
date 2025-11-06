@@ -5,7 +5,7 @@
 {% block content %}
 <div class="row">
   <div class="col-md-10 offset-md-1">
-
+<!-- this posts to the url for a particular election -->
     <form method="POST" action="{% url 'cast_ballot_view' election.id %}">
       {% csrf_token %}
 
@@ -52,3 +52,5 @@
   </div>
 </div>
 {% endblock %}
+
+
