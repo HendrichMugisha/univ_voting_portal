@@ -1,0 +1,12 @@
+# ignore the venv
+.venv/
+
+# Ignore the .env file with our secrets
+.env
+
+# Ignore the local database
+db.sqlite3
+
+# Ignore Python's compiled files
+__pycache__/
+*.pyc

@@ -1,3 +1,11 @@
+# to ensure the settings are dynamic both for development and deployment
+import dj_database_url
+import os 
+
+# to read enviroment variables
+from decouple import config
+
+
 
 from pathlib import Path
 from django.contrib.messages import constants as messages
@@ -10,12 +18,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-nqh$=xgebpef4ua+1a(0vt$+#nwnhv!5dkw-2m&d)4!ssxyd!e'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+# This code is for Render. It automatically adds Render's hostname.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -31,6 +44,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # this adds the whitenoise middleware to serve static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -61,14 +77,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'univoteportal.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Reads DATABASE_URL from .env or Render's environment
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),
+        ssl_require=not DEBUG # Require SSL only in production
+    )
 }
 
 
@@ -104,12 +119,22 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+# this is to load the static files
+STATIC_URL = '/static/'
+
+# this is the folder where the static files are
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+# The folder where 'collectstatic' will copy all files for production
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# The storage engine that WhiteNoise provides
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -122,14 +147,4 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-# this is to load the static files
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
 
-# This tells Celery where the "mailbox" (Redis) is.
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-
-# This tells Celery where to store task results (we can also use Redis).
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
