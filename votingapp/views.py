@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout
-# from django.contrib.auth. import authenticate, login, logout, User
-from django.contrib.auth.decorators import login_required
+from django.db.models import Count
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
@@ -51,9 +51,15 @@ def login_view(request):
         
         if user is not None:
             # if they exist simply log them in
-            login(request, user)
+            if user.is_staff:
+                # log them in and send them to the results dashboard right away
+                login(request, user)
+                # Send them to the admin results page
+                return redirect('results_dashboard')
+            else:
+                login(request, user)
             # Redirect to the main voting portal after successful login
-            return redirect('election_list_view')
+                return redirect('election_list_view')
         
         else:
             # else show an error on the template
@@ -239,3 +245,57 @@ def thank_you_view(request):
     A simple page to show the user after they have successfully voted.
     """
     return render(request, 'thank_you.html')
+
+
+# ----------------admin related views and helpers -------
+def is_admin_user(user):
+    # returns true only if the user is authenticated and is staff ie is an admin
+    return user.is_authenticated and user.is_staff
+
+@user_passes_test(is_admin_user, login_url='login_view')
+def results_dashboard_view(request):
+    
+    # displays a list of all past and present elections that the user can then click on to see results
+    elections = Election.objects.all().order_by('-start_time') #sorts them newest to oldest
+    
+    context = {
+        'elections': elections
+    }
+    return render(request, 'admin_results_dashboard.html', context)
+
+
+
+
+#------------- display reuslts to admin--------------------------
+@user_passes_test(is_admin_user, login_url='login_view')
+def election_results_view(request, election_id):
+    
+#   get the requested election by primary key
+    election = get_object_or_404(Election, pk=election_id)
+    
+    # We get all positions for this election
+    positions = election.positions.all()
+    
+    # We get all candidates and count how many 'votes' are related to each one.
+    
+    candidates_with_votes = Candidate.objects.filter( #this gets all candidates
+                                                     
+        position__election=election #gives us only those whose position is related to an election which is the same as the election we are currently looking for
+        
+    ).annotate( # this adds a new field to each candidae object in the list
+        
+        vote_count=Count('votes')  # this says the new field will be named vote_count and counts the number of votes objects are related to them
+        
+    ).order_by('position', '-vote_count') # Group by position ie president votes are together and then by the vote count
+
+    # We also get the total number of voters for this election using the related name voters in studentprofile model
+    total_voters = election.voters.count()
+
+    context = {
+        'election': election,
+        'positions': positions,
+        'candidates_with_votes': candidates_with_votes,
+        'total_voters': total_voters,
+    }
+    return render(request, 'admin_election_results.html', context)
+

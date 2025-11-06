@@ -9,12 +9,14 @@
       <p class="lead">Please select an election to cast your vote.</p>
     </div>
 
-    {% if active_elections %}
+    {% if active_elections_data %}
       <div class="list-group shadow-sm">
-        {% for election, has_voted in active_elections %}
+        
+        {% for election, has_voted in active_elections_data %}
           <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3">
             <div>
               <h5 class="mb-1 fw-bold">{{ election.name }}</h5>
+              <p class="mb-1 text-muted">{{ election.description }}</p>
               <small>Closes: {{ election.end_time|date:"F d, Y \a\t P" }}</small>
             </div>
             

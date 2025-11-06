@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Election Results{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 offset-md-2">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h2>Election Results Dashboard</h2>
+      </div>
+      <div class="card-body">
+        <p>Select an election to view the live tally.</p>
+        <div class="list-group">
+          {% for election in elections %}
+            <a href="{% url 'election_results' election.id %}" class="list-group-item list-group-item-action">
+              {{ election.name }}
+            </a>
+          {% empty %}
+            <p>No elections found.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

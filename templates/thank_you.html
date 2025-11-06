@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Thank You{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-md-8 offset-md-2 text-center">
+    <div class="alert alert-success p-5">
+      <h1 class="alert-heading">✅ Thank You!</h1>
+      <p class="lead">Your vote has been successfully cast and will be counted.</p>
+      <hr>
+      <p>You may now <a href="{% url 'election_list_view' %}" class="alert-link">return to the dashboard</a> or <a href="{% url 'logout_view' %}" class="alert-link">logout</a>.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@ from django.db import models
 # link to settings.py 
 from django.conf import settings
 
+# demopass123
 
 # -----------------student profile model---------------
 
@@ -66,6 +67,9 @@ class Candidate(models.Model):
     
     # simple bio of the candidate
     bio = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.name} for ({self.position.name})"
     
 
 
