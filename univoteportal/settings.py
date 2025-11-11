@@ -146,5 +146,9 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
+# this is the url prefix for the media files 
+MEDIA_URL = '/media/'
 
+# The absolute path to the folder where files will be stored.
+MEDIA_ROOT = BASE_DIR / 'media'
 

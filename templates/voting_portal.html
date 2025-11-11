@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Cast Your Vote{% endblock %}
 
 {% block content %}
 <div class="row">
-  <div class="col-md-10 offset-md-1">
-<!-- this posts to the url for a particular election -->
+  <div class="col-lg-10 offset-lg-1">
+
     <form method="POST" action="{% url 'cast_ballot_view' election.id %}">
       {% csrf_token %}
 
@@ -15,34 +16,72 @@
       </div>
 
       {% for position in positions %}
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-dark text-white">
-            <h3 class="mb-0">{{ position.name }}</h3>
-          </div>
-          <div class="card-body">
-            <p class="card-text text-muted">{{ position.description }}</p>
-            
-            {% for candidate in position.candidates.all %}
-              <div class="form-check p-3 border-bottom">
-                <input class="form-check-input" 
-                       type="radio" 
-                       name="{{ position.id }}" 
-                       id="cand-{{ candidate.id }}" 
-                       value="{{ candidate.id }}" 
-                       required>
-                
-                <label class="form-check-label ms-2" for="cand-{{ candidate.id }}">
-                  <h5 class="fw-bold">{{ candidate.name }}</h5>
-                  <p class="mb-1">{{ candidate.bio }}</p>
-                </label>
-              </div>
-            {% endfor %}
-
-          </div>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+          <h3 class="mb-0">{{ position.name }}</h3>
         </div>
+        <div class="card-body p-0">
+          <p class="card-text text-muted p-3">{{ position.description }}</p>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover mb-0">
+              <thead class="table-light">
+                <tr class="text-center align-middle small py-1">
+                  <th class="p-1 p-md-3">Candidate's Name</th>
+                  <th class="p-1 p-md-3">Photograph</th>
+                  <th class="p-1 p-md-3">Party Name & Symbol</th>
+                  <th class="p-1 p-md-3">Voter's Tick</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for candidate in position.candidates.all %}
+                <tr class="text-center align-middle">
+
+                  <td class="p-1 p-md-3">
+                    <h5 class="fw-bold mb-0 fs-6 fs-md-5">{{ candidate.name }}</h5>
+                  </td>
+
+                  <td class="p-1 p-md-3">
+                    {% if candidate.candidate_photo %}
+                    <img src="{{ candidate.candidate_photo.url }}" alt="{{ candidate.name }}" class="candidate-photo">
+                    {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" alt="No Photo" class="candidate-photo"
+                      style="opacity: 0.5;">
+                    {% endif %}
+                  </td>
+
+                  <td class="p-1 p-md-3">
+                    {% if candidate.party %}
+                    {% if candidate.party.logo %}
+                    <img src="{{ candidate.party.logo.url }}" alt="{{ candidate.party.name }} Logo"
+                      class="party-logo mb-1">
+                    {% endif %}
+                    <p class="mb-0 mt-1 fw-medium small">{{ candidate.party.name }}</p>
+                    {% else %}
+                    {% if candidate.independent_symbol %}
+                    <img src="{{ candidate.independent_symbol.url }}" alt="Independent Symbol" class="party-logo mb-1">
+                    {% endif %}
+                    <p class="mb-0 mt-1">Independent</p>
+                    {% endif %}
+                  </td>
+
+                  <td class="p-1 p-md-3">
+                    <input class="visually-hidden-radio" type="radio" name="{{ position.id }}"
+                      id="cand-{{ candidate.id }}" value="{{ candidate.id }}" required>
+                    <label class="tick-box-label" for="cand-{{ candidate.id }}">
+                    </label>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
       {% endfor %}
 
-      <div class="d-grid gap-2">
+      <div class="d-grid gap-2 col-md-6 mx-auto">
         <button type="submit" class="btn btn-success btn-lg p-3">
           CAST MY VOTE
         </button>
@@ -52,5 +91,3 @@
   </div>
 </div>
 {% endblock %}
-
-

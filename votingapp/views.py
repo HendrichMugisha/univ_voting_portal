@@ -145,12 +145,43 @@ def ballot_view(request, election_id): #Takes election_id of the election tha ha
         return render(request, 'already_voted.html')
 
     # getting all the candidates for all the positions for this particular election 
-    positions = election.positions.prefetch_related('candidates').all()
+    all_positions = election.positions.prefetch_related('candidates').all()
+    
+    # creating a list that will store the positions for which the logged in user is eligible to vote
+    eligible_positions = []
+    
+    # loop through all the positions
+    for position in all_positions:
+        
+        # Assume they are eligible, then prove they are not
+        is_eligible_for_pos = True 
+        
+        # Check if gender rule exists for the the position
+        if position.limit_by_gender: 
+            # check if the gender set in the rule is the same as the users gender
+            if position.limit_by_gender != profile.gender:
+                # if it isnt, then the person is not eligible for that position
+                is_eligible_for_pos = False
+        
+        # if the person is eligible by gender, check if the position has a limit by scholarship
+        if is_eligible_for_pos and position.limit_by_sponsorship: 
+            # same as before
+            if position.limit_by_sponsorship != profile.sponsorship_type:
+                is_eligible_for_pos = False
+                
 
+        # 4. If they passed all checks, add the position to the list
+        if is_eligible_for_pos:
+            eligible_positions.append(position)
+
+    # --- END NEW LOGIC ---
+
+    
+    
     # handing this information to the frontend
     context = {
         'election': election,
-        'positions': positions
+        'positions': eligible_positions
     }
     return render(request, 'voting_portal.html', context)
 

@@ -11,3 +11,5 @@ admin.site.register(Position)
 admin.site.register(Candidate)
 
 admin.site.register(Vote)
+
+admin.site.register(Party)
