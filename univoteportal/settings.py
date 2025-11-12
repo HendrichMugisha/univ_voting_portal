@@ -154,6 +154,10 @@ MESSAGE_TAGS = {
 if not DEBUG:
     # This tells Django to use Cloudinary for all file uploads
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    CLOUDINARY_STORAGE = {
+        
+'CLOUDINARY URL': config('CLOUDINARY_URL')
+    }
 else:
     # In local development (DEBUG=True), just use the local file system.
     MEDIA_URL = '/media/'
