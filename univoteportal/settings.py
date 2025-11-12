@@ -150,14 +150,6 @@ MESSAGE_TAGS = {
 }
 
 
-# --- CLOUDINARY MEDIA (UPLOAD) CONFIGURATION ---
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': config('CLOUDINARY_API_KEY'),
-    'API_SECRET': config('CLOUDINARY_API_SECRET'),
-}
-
 # We only want to use Cloudinary in production (when DEBUG=False)
 if not DEBUG:
     # This tells Django to use Cloudinary for all file uploads
