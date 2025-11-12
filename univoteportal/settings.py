@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'votingapp',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -146,9 +148,22 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
-# this is the url prefix for the media files 
-MEDIA_URL = '/media/'
 
-# The absolute path to the folder where files will be stored.
-MEDIA_ROOT = BASE_DIR / 'media'
+
+# --- CLOUDINARY MEDIA (UPLOAD) CONFIGURATION ---
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': config('CLOUDINARY_API_KEY'),
+    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+}
+
+# We only want to use Cloudinary in production (when DEBUG=False)
+if not DEBUG:
+    # This tells Django to use Cloudinary for all file uploads
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+else:
+    # In local development (DEBUG=True), just use the local file system.
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
