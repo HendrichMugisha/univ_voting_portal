@@ -156,7 +156,7 @@ if not DEBUG:
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
     CLOUDINARY_STORAGE = {
         
-'CLOUDINARY URL': config('CLOUDINARY_URL')
+'CLOUDINARY_URL': config('CLOUDINARY_URL')
     }
 else:
     # In local development (DEBUG=True), just use the local file system.
