@@ -12,13 +12,21 @@ from django.contrib.messages import constants as messages
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# ==============================================================================
+# CORE SETTINGS (MOVED TO TOP)
+# ==============================================================================
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
+# This checks for Render's built-in environment variable
+IS_PRODUCTION = os.environ.get('RENDER') == 'true'
 
+# SECURITY WARNING: don't run with debug turned on in production!
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -28,8 +36,11 @@ if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
-# Application definition
+# ==============================================================================
+# APPLICATION & MIDDLEWARE
+# ==============================================================================
 
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -42,10 +53,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    # this adds the whitenoise middleware to serve static files
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise middleware should be placed AFTER SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -53,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
 
 ROOT_URLCONF = 'univoteportal.urls'
 
@@ -75,10 +84,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'univoteportal.wsgi.application'
 
 
+# ==============================================================================
+# DATABASE & AUTHENTICATION
+# ==============================================================================
+
+# Reads DATABASE_URL from .env or Render's environment
+DATABASES = {
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),
+        ssl_require=IS_PRODUCTION # Require SSL only in production
+    )
+}
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
+    # ... (Your validators are unchanged) ...
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -94,53 +116,40 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
+# ==============================================================================
+# INTERNATIONALIZATION
+# ==============================================================================
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
-# This checks for Render's built-in environment variable
-IS_PRODUCTION = os.environ.get('RENDER') == 'true'
+# ==============================================================================
+# STATIC & MEDIA FILES (THE BIG FIX)
+# ==============================================================================
 
-
-if IS_PRODUCTION:
-    DEBUG = False
-else:
-    DEBUG = True
-
-# Reads DATABASE_URL from .env or Render's environment
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        ssl_require=not DEBUG # Require SSL only in production
-    )
-}
-
+# --- Static files (CSS, JavaScript, Images) ---
 
 # this is to load the static files
 STATIC_URL = '/static/'
-
 # this is the folder where the static files are
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# The folder where 'collectstatic' will copy all files for production
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# --- Production vs. Development Storage ---
 
-# The storage engine that WhiteNoise provides
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# --- Media Files (S3 in Production, Local in Dev) ---
 if IS_PRODUCTION:
-    # --- AWS S3 Media Storage ---
+    # --- PRODUCTION SETTINGS (Render) ---
+    
+    # Static files (WhiteNoise)
+    # The folder where 'collectstatic' will copy all files for production
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+    # The storage engine that WhiteNoise provides
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    
+    # Media files (S3)
     # These are read from Render's env
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
@@ -161,18 +170,20 @@ if IS_PRODUCTION:
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 
 else:
-    # --- Local Media Storage ---
+    # --- DEVELOPMENT SETTINGS (Local) ---
+    
+    # Static files (Django's built-in)
+    # We don't need to set STATIC_ROOT or STATICFILES_STORAGE
+    
+    # Media files (Local)
     # In local development (DEBUG=True), just use the local file system.
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
     
-print("==================================================")
-render_env_var = os.environ.get('RENDER')
-print(f"--- [DEPLOY CHECK] The 'RENDER' variable is: {render_env_var} ---")
-print(f"--- [DEPLOY CHECK] The type is: {type(render_env_var)} ---")
-print(f"--- [DEPLOY CHECK] IS_PRODUCTION is set to: {IS_PRODUCTION} ---")
-print(f"--- [DEPLOY CHECK] DEBUG is set to: {DEBUG} ---")
-print("==================================================")
+
+# ==============================================================================
+# OTHER SETTINGS
+# ==============================================================================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -184,3 +195,12 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
+
+# --- Your debug print statements (keep these for now) ---
+print("==================================================")
+render_env_var = os.environ.get('RENDER')
+print(f"--- [DEPLOY CHECK] The 'RENDER' variable is: {render_env_var} ---")
+print(f"--- [DEPLOY CHECK] The type is: {type(render_env_var)} ---")
+print(f"--- [DEPLOY CHECK] IS_PRODUCTION is set to: {IS_PRODUCTION} ---")
+print(f"--- [DEPLOY CHECK] DEBUG is set to: {DEBUG} ---")
+print("==================================================")
