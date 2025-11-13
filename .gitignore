@@ -10,3 +10,5 @@ db.sqlite3
 # Ignore Python's compiled files
 __pycache__/
 *.pyc
+
+gulu-voting-s3-user_accessKeys.csv

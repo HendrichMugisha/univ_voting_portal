@@ -5,8 +5,6 @@ import os
 # to read enviroment variables
 from decouple import config
 
-
-
 from pathlib import Path
 from django.contrib.messages import constants as messages
 
@@ -40,8 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'votingapp',
-    'cloudinary',
-    'cloudinary_storage',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -78,23 +75,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'univoteportal.wsgi.application'
 
 
-# This checks for Render's built-in environment variable
-IS_PRODUCTION = os.environ.get('RENDER') == 'true'
-
-if IS_PRODUCTION:
-    DEBUG = False
-else:
-    DEBUG = True
-
-# Reads DATABASE_URL from .env or Render's environment
-DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),
-        ssl_require=not DEBUG # Require SSL only in production
-    )
-}
-
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -126,7 +106,22 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# This checks for Render's built-in environment variable
+IS_PRODUCTION = os.environ.get('RENDER') == 'true'
+
+
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    DEBUG = True
+
+# Reads DATABASE_URL from .env or Render's environment
+DATABASES = {
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),
+        ssl_require=not DEBUG # Require SSL only in production
+    )
+}
 
 
 # this is to load the static files
@@ -143,6 +138,33 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # The storage engine that WhiteNoise provides
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# --- Media Files (S3 in Production, Local in Dev) ---
+if IS_PRODUCTION:
+    # --- AWS S3 Media Storage ---
+    # These are read from Render's env
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
+    
+    # This is the bucket's website URL
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400', # Cache files for 1 day
+    }
+    
+    # This is the storage backend for user-uploaded files (media)
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    
+    # We must set this so django-storages knows where to put new files
+    AWS_LOCATION = 'media'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
+
+else:
+    # --- Local Media Storage ---
+    # In local development (DEBUG=True), just use the local file system.
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -154,37 +176,3 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
-
-
-# We only want to use Cloudinary in production (when DEBUG=False)
-
-# if IS_PRODUCTION:
-#     # This tells Django to use Cloudinary for all file uploads
-#     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-# else:
-#     # In local development, just use the local file system.
-#     MEDIA_URL = '/media/'
-#     MEDIA_ROOT = BASE_DIR / 'media'
-    
-# # --- TO CHECK THE RENDER ENVT ---
-# print(f"--- [DEBUG CHECK] DEBUG status is: {DEBUG} ---")
-# print(f"--- [DEBUG CHECK] CLOUDINARY_URL is: {config('CLOUDINARY_URL', default='NOT SET')} ---")
-
-
-
-# Read CLOUDINARY_URL from environment (fall back to None)
-CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL') or config('CLOUDINARY_URL', default=None)
-
-if CLOUDINARY_URL:
-    # Use Cloudinary for user-uploaded media
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    # Optional: leave MEDIA_ROOT/MEDIA_URL undefined for cloud storage
-else:
-    # Local file storage for development or when Cloudinary is not configured
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
-
-# Helpful debugging output in Render logs (safe to leave in; remove later if desired)
-print(f"--- [DEBUG CHECK] DEBUG status is: {DEBUG} ---")
-print(f"--- [DEBUG CHECK] CLOUDINARY_URL is: {CLOUDINARY_URL or 'NOT SET'} ---")
-
