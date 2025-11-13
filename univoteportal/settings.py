@@ -165,6 +165,14 @@ else:
     # In local development (DEBUG=True), just use the local file system.
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
+    
+print("==================================================")
+render_env_var = os.environ.get('RENDER')
+print(f"--- [DEPLOY CHECK] The 'RENDER' variable is: {render_env_var} ---")
+print(f"--- [DEPLOY CHECK] The type is: {type(render_env_var)} ---")
+print(f"--- [DEPLOY CHECK] IS_PRODUCTION is set to: {IS_PRODUCTION} ---")
+print(f"--- [DEPLOY CHECK] DEBUG is set to: {DEBUG} ---")
+print("==================================================")
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
