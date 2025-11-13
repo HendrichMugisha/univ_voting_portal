@@ -20,8 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -149,14 +148,22 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
+# NEW FOOLPROOF CODE
+# This checks for Render's built-in environment variable
+IS_PRODUCTION = os.environ.get('RENDER') == 'true'
+
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    DEBUG = True
 
 # We only want to use Cloudinary in production (when DEBUG=False)
-if not DEBUG:
-    
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
+if IS_PRODUCTION:
+    # This tells Django to use Cloudinary for all file uploads
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 else:
-    # In local development (DEBUG=True), just use the local file system.
+    # In local development, just use the local file system.
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
     
