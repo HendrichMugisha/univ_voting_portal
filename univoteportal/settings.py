@@ -78,6 +78,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'univoteportal.wsgi.application'
 
 
+# This checks for Render's built-in environment variable
+IS_PRODUCTION = os.environ.get('RENDER') == 'true'
+
+if IS_PRODUCTION:
+    DEBUG = False
+else:
+    DEBUG = True
 
 # Reads DATABASE_URL from .env or Render's environment
 DATABASES = {
@@ -148,14 +155,6 @@ MESSAGE_TAGS = {
     messages.ERROR: 'alert-danger',
 }
 
-# NEW FOOLPROOF CODE
-# This checks for Render's built-in environment variable
-IS_PRODUCTION = os.environ.get('RENDER') == 'true'
-
-if IS_PRODUCTION:
-    DEBUG = False
-else:
-    DEBUG = True
 
 # We only want to use Cloudinary in production (when DEBUG=False)
 
