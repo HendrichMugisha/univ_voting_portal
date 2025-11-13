@@ -152,12 +152,15 @@ MESSAGE_TAGS = {
 
 # We only want to use Cloudinary in production (when DEBUG=False)
 if not DEBUG:
-    # DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    CLOUDINARY_STORAGE = {
-        'CLOUDINARY_URL': config('CLOUDINARY_URL')
-    }
+    
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 else:
     # In local development (DEBUG=True), just use the local file system.
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
+    
+# --- TO CHECK THE RENDER ENVT ---
+print(f"--- [DEBUG CHECK] DEBUG status is: {DEBUG} ---")
+print(f"--- [DEBUG CHECK] CLOUDINARY_URL is: {config('CLOUDINARY_URL', default='NOT SET')} ---")
 
