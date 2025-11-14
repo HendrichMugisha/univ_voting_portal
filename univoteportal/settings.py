@@ -162,11 +162,20 @@ if IS_PRODUCTION:
         'CacheControl': 'max-age=86400', # Cache files for 1 day
     }
     
-    # This is the storage backend for user-uploaded files (media)
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    
+    AWS_QUERYSTRING_AUTH = False  # so generated urls are clean and cacheable
+    AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',  # tune as needed
+}
+    
+   
     
     # We must set this so django-storages knows where to put new files
     AWS_LOCATION = 'media'
+    
+    # This is the storage backend for user-uploaded files (media)
+    DEFAULT_FILE_STORAGE = 'votingapp.storages.backends.s3boto3.S3Boto3Storage'
+    
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
 
 else:
