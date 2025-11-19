@@ -1,14 +1,8 @@
-# ignore the venv
-.venv/
-
-# Ignore the .env file with our secrets
-.env
-
-# Ignore the local database
-db.sqlite3
-
-# Ignore Python's compiled files
-__pycache__/
+venv/
 *.pyc
-
-gulu-voting-s3-user_accessKeys.csv
+__pycache__/
+db.sqlite3
+.env
+.DS_Store
+media/
+staticfiles/

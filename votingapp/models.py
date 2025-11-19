@@ -32,13 +32,11 @@ class StudentProfile(models.Model):
 
 # whether they are a weekday or weekend student
     SESSION_CHOICES = [
-        ('Weekend', 'Weekend_Students'),
-        ('Weekday', 'Weekday_Students')
+        ('Weekend', 'Weekend'),
+        ('Weekday', 'Weekday')
     ]
     
     session_category = models.CharField(max_length=30, choices=SESSION_CHOICES, blank=True, null=True)
-    
-    
     
     voted_in_elections = models.ManyToManyField(
         # this election is a string due to the forward referencing standard
@@ -93,16 +91,39 @@ class Position(models.Model):
     )
     
     # limit by session(weekend or weekday)
-    limit_by_session = models.CharField(max_length=20, 
+    limit_by_session = models.CharField(
+        max_length=20, 
         choices=StudentProfile.SESSION_CHOICES, 
         blank=True, 
         null=True
-        )
+    )
     
     
     def __str__(self):
         return f"{self.name} ({self.election.name})"
 
+
+# ---------- the party model --------
+# Defined before Candidate so we can reference it easily (though string ref is also fine)
+
+PARTY_CHOICES = [
+    ('NRM', 'National Resistance Movement'),
+    ('NUP', 'National Unity Platform'),
+    ('FDC', 'Forum for Democratic Change'),
+    ('DP', 'Democratic Party'),
+    ('UPC', "Uganda People's Congress"),
+    ('JEEMA', "Justice Forum"),
+    ('PPP', "People's Progressive Party"),
+    ('ANT', "Alliance for National Transformation"),
+    ('IND', "Independent"), # Added Independent as a choice usually helpful
+]
+
+class Party(models.Model):
+    name = models.CharField(max_length=100, unique=True, choices=PARTY_CHOICES)
+    logo = models.ImageField(upload_to='party_logos/', blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.get_name_display()}" # Returns the full name (e.g. National Unity Platform)
 
 
 # ----------------- candidate model --------------------------------
@@ -123,16 +144,18 @@ class Candidate(models.Model):
     
     # the candidate's party
     party = models.ForeignKey(
-        'Party', 
+        Party, 
         on_delete=models.SET_NULL, 
         blank=True, 
         null=True
     )
     
     # if the candidate is independent then they can submit their own symbol
-    independent_symbol = models.ImageField(upload_to='independent_symbols/', 
+    independent_symbol = models.ImageField(
+        upload_to='independent_symbols/', 
         blank=True, 
-        null=True)
+        null=True
+    )
     
     # simple bio of the candidate
     bio = models.TextField(blank=True)
@@ -154,25 +177,4 @@ class Vote(models.Model):
     # the time the vote was cast
     timestamp = models.DateTimeField(auto_now_add=True)
     
-    # there is no link between the vote and the student that cast it! 
-
-
-# ---------- the party model --------
-PARTY_CHOICES = [
-    ('NRM', 'National Resistance Movement'),
-    ('NUP', 'National Unity Platform'),
-    ('FDC', 'Forum for Democratic Change'),
-    ('DP', 'Democratic Party'),
-    ('UPC', "Uganda People's Congress"),
-    ('JEEMA', "Justice Forum"),
-    ('PPP', "People's Progressive Party"),
-    ('ANT', "Alliance for National Transformation"),
-]
-
-class Party(models.Model):
-    name = models.CharField(max_length=100, unique=True, choices=PARTY_CHOICES)
-    logo = models.ImageField(upload_to = 'party_logos/', blank=True, null=True
-                             )
-    
-    def __str__(self):
-        return f"{self.name}"
+    # there is no link between the vote and the student that cast it!

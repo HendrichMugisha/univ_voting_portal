@@ -6,25 +6,19 @@ from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
 from functools import wraps
-# from .import tasks
 
-#  importing models
+# importing models
 from .models import StudentProfile, Election, Position, Candidate, Vote
 
-# Importing the Celery task to handle vote tallying task -- for later
-# from .tasks import process_vote_task
-
 # this is a decorator to check if the logged in user has a profile-------
-
 def profile_required(view_func):
-
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         try:
             # Check if the profile exists
             profile = request.user.studentprofile
             
-        # attaching the profile to the request object so the view function doesnt even look for  it
+            # attaching the profile to the request object so the view function doesnt even look for it
             request.profile = profile 
             
         except StudentProfile.DoesNotExist:
@@ -54,19 +48,16 @@ def login_view(request):
             if user.is_staff:
                 # log them in and send them to the results dashboard right away
                 login(request, user)
-                # Send them to the admin results page
                 return redirect('results_dashboard')
             else:
                 login(request, user)
-            # Redirect to the main voting portal after successful login
+                # Redirect to the main voting portal after successful login
                 return redirect('election_list_view')
-        
         else:
             # else show an error on the template
             messages.error(request, 'Invalid username or password. Please try again.')
             
     return render(request, 'login.html')
-
 
 
 # if the user clicks the logout button
@@ -79,13 +70,9 @@ def logout_view(request):
     return redirect('login_view')
 
 
-
-
 # --- 2. Voting Portal Views -------------------------------------------------------------
 
-
 # ----------view for all the elections
-
 @login_required(login_url='login_view')
 @profile_required  
 def election_list_view(request):
@@ -98,24 +85,21 @@ def election_list_view(request):
         end_time__gte=now #end time is in the future
     ).order_by('end_time')
 
-    
-  # Get the list of elections the user has *already* voted in
+    # Get the list of elections the user has *already* voted in
     voted_in = request.profile.voted_in_elections.all() 
-    # nb the profile was attached to the request object during the profile check 
-
+    
     # Create a list of tuples: (election, has_voted)
     active_elections_data = [
-        # this is a list comprehension that creates tuples each with an active election and a corresponding boolean value of whether it is among those that user has already voted in 
-        
         (election, election in voted_in) 
         for election in active_elections_qs
     ]
 
-# this will be available to the election list template
+    # this will be available to the election list template
     context = {
         'active_elections_data': active_elections_data
     }
     return render(request, 'election_list.html', context)
+
 
 # ---------the ballot view for one specific election------------------------------
 @login_required(login_url='login_view')
@@ -128,8 +112,6 @@ def ballot_view(request, election_id): #Takes election_id of the election tha ha
     election = get_object_or_404(
         Election,
         pk=election_id, #primary key is the election id requested by the user
-        
-        # this hides the ballot for an election that has closed even if the user guesses the url
         start_time__lte=now,
         end_time__gte=now
     )
@@ -145,7 +127,8 @@ def ballot_view(request, election_id): #Takes election_id of the election tha ha
         return render(request, 'already_voted.html')
 
     # getting all the candidates for all the positions for this particular election 
-    all_positions = election.positions.prefetch_related('candidates').all()
+    # prefetch candidates AND their parties to avoid N+1 queries
+    all_positions = election.positions.prefetch_related('candidates__party').all()
     
     # creating a list that will store the positions for which the logged in user is eligible to vote
     eligible_positions = []
@@ -156,34 +139,32 @@ def ballot_view(request, election_id): #Takes election_id of the election tha ha
         # Assume they are eligible, then prove they are not
         is_eligible_for_pos = True 
         
-        # Check if gender rule exists for the the position
+        # 1. Check Gender Rule
         if position.limit_by_gender: 
-            # check if the gender set in the rule is the same as the users gender
             if position.limit_by_gender != profile.gender:
-                # if it isnt, then the person is not eligible for that position
                 is_eligible_for_pos = False
         
-        # if the person is eligible by gender, check if the position has a limit by scholarship
+        # 2. Check Sponsorship Rule
         if is_eligible_for_pos and position.limit_by_sponsorship: 
-            # same as before
             if position.limit_by_sponsorship != profile.sponsorship_type:
                 is_eligible_for_pos = False
-                
+        
+        # 3. Check Session Rule (NEW)
+        if is_eligible_for_pos and position.limit_by_session:
+            if position.limit_by_session != profile.session_category:
+                is_eligible_for_pos = False
 
-        # 4. If they passed all checks, add the position to the list
+        # If they passed all checks, add the position to the list
         if is_eligible_for_pos:
             eligible_positions.append(position)
 
-    # --- END NEW LOGIC ---
-
-    
-    
     # handing this information to the frontend
     context = {
         'election': election,
         'positions': eligible_positions
     }
     return render(request, 'voting_portal.html', context)
+
 
 #-------------------casting the ballot----------------
 @login_required(login_url='login_view')
@@ -195,25 +176,18 @@ def cast_ballot_view(request, election_id): #Takes election_id
         return redirect('election_list_view')
 
     now = timezone.now()
-   
-
     
     try:
-
-        
         # --- CRITICAL SECTION: if anything happens inside this code block, the db rolls back all changes
-        # this prevents double voting, and prevents a user from being marked as voted if their vote doesnt save
-        
         with transaction.atomic():
             
-        # 1. get the election and check if its still active
+            # 1. get the election and check if its still active
             election = get_object_or_404(
-            Election,
-            pk=election_id,
-            start_time__lte=now,
-            end_time__gte=now
-        )
-
+                Election,
+                pk=election_id,
+                start_time__lte=now,
+                end_time__gte=now
+            )
             
             # 2. Lock the user's profile row so nothing else touches it till the transaction is finished
             profile = StudentProfile.objects.select_for_update().get(user=request.user)
@@ -226,9 +200,8 @@ def cast_ballot_view(request, election_id): #Takes election_id
             # 4. Mark the user as having voted *in this election*
             profile.voted_in_elections.add(election)
             
-            #5. get the vote data from request.post
+            # 5. get the vote data from request.post
             vote_data = {}
-
             for key, value in request.POST.items():
                 # The keys for positions are their IDs (which are numbers)
                 if key.isdigit():
@@ -246,7 +219,7 @@ def cast_ballot_view(request, election_id): #Takes election_id
                     )
                 )
                 
-                # check if the user was a dummy and tried to submit an empty ballot
+            # check if the user was a dummy and tried to submit an empty ballot
             if votes_to_create:
                 # grab all the users votes for all the candidates and stamp them into the database at once
                 Vote.objects.bulk_create(votes_to_create)
@@ -254,8 +227,6 @@ def cast_ballot_view(request, election_id): #Takes election_id
                 raise Exception("Empty ballot submission is not allowed.")
 
         # --- END OF TRANSACTION ---
-        # If we get here, all database writes were successful.
-        # The database lock on the user's profile is now released.
 
     except Election.DoesNotExist:
         messages.error(request, 'The election has just closed. Your vote was not counted.')
@@ -269,12 +240,8 @@ def cast_ballot_view(request, election_id): #Takes election_id
 
 
 # --- 3. After-Voting View ---
-
 @login_required(login_url='login_view')
 def thank_you_view(request):
-    """
-    A simple page to show the user after they have successfully voted.
-    """
     return render(request, 'thank_you.html')
 
 
@@ -285,41 +252,32 @@ def is_admin_user(user):
 
 @user_passes_test(is_admin_user, login_url='login_view')
 def results_dashboard_view(request):
-    
     # displays a list of all past and present elections that the user can then click on to see results
     elections = Election.objects.all().order_by('-start_time') #sorts them newest to oldest
-    
     context = {
         'elections': elections
     }
     return render(request, 'admin_results_dashboard.html', context)
 
 
-
-
 #------------- display reuslts to admin--------------------------
 @user_passes_test(is_admin_user, login_url='login_view')
 def election_results_view(request, election_id):
     
-#   get the requested election by primary key
+    # get the requested election by primary key
     election = get_object_or_404(Election, pk=election_id)
     
     # We get all positions for this election
     positions = election.positions.all()
     
     # We get all candidates and count how many 'votes' are related to each one.
-    
-    candidates_with_votes = Candidate.objects.filter( #this gets all candidates
-                                                     
-        position__election=election #gives us only those whose position is related to an election which is the same as the election we are currently looking for
-        
+    candidates_with_votes = Candidate.objects.filter( 
+        position__election=election 
     ).annotate( # this adds a new field to each candidae object in the list
-        
-        vote_count=Count('votes')  # this says the new field will be named vote_count and counts the number of votes objects are related to them
-        
-    ).order_by('position', '-vote_count') # Group by position ie president votes are together and then by the vote count
+        vote_count=Count('votes')  # this says the new field will be named vote_count
+    ).order_by('position', '-vote_count') # Group by position, then vote count
 
-    # We also get the total number of voters for this election using the related name voters in studentprofile model
+    # We also get the total number of voters for this election
     total_voters = election.voters.count()
 
     context = {
@@ -329,4 +287,3 @@ def election_results_view(request, election_id):
         'total_voters': total_voters,
     }
     return render(request, 'admin_election_results.html', context)
-
