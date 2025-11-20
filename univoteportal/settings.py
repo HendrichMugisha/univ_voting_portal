@@ -17,7 +17,6 @@ SECRET_KEY = config('SECRET_KEY')
 
 # --- ENVIRONMENT LOGIC ---
 # We check if we are on Render to set IS_PRODUCTION.
-# You can also set 'ENVIRONMENT=production' in your .env if you move to AWS/Heroku later.
 IS_PRODUCTION = config('RENDER', default=False, cast=bool)
 
 # Debug is True locally, False in production (unless forced)
@@ -115,46 +114,58 @@ USE_TZ = True
 
 
 # ======================================================================
-# STATIC FILES (CSS, JavaScript, Images)
+# STATIC & MEDIA FILES (New Django 4.2+ STORAGES Configuration)
 # ======================================================================
+
+# Base Static Settings (Used everywhere)
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Production Static Files (WhiteNoise)
 if IS_PRODUCTION:
-    STATIC_ROOT = BASE_DIR / 'staticfiles'
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
-# ======================================================================
-# MEDIA FILES (UPLOADS)
-# ======================================================================
-
-if IS_PRODUCTION:
-    # --- AWS S3 SETTINGS (Production) ---
+    # --- PRODUCTION SETTINGS (Render) ---
+    
+    # 1. AWS S3 Settings
     AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
-    
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
     AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-    
-    # Store files in a 'media' folder inside the bucket
-    AWS_LOCATION = 'media'
-    
-    # Use the standard S3 storage class (No custom file needed)
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    
-    # Generate the URL
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
+
+    # 2. Storage Configuration (The Modern Way)
+    STORAGES = {
+        # "default" controls Media files (uploads) -> Goes to S3
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": "media", # Save files to 'media/' folder in bucket
+            },
+        },
+        # "staticfiles" controls Static CSS/JS -> Goes to WhiteNoise
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    # URLs for Production
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 else:
     # --- LOCAL SETTINGS (Development) ---
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    # URLs for Local Dev
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
-    # Use standard file system storage
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 
 # ======================================================================
