@@ -143,7 +143,7 @@ if IS_PRODUCTION:
         },
         # "staticfiles" controls Static CSS/JS -> Goes to WhiteNoise
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
         },
     }
 
