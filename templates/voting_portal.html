@@ -67,7 +67,7 @@
 
                   <td class="p-1 p-md-3">
                     <input class="visually-hidden-radio" type="radio" name="{{ position.id }}"
-                      id="cand-{{ candidate.id }}" value="{{ candidate.id }}" required>
+                      id="cand-{{ candidate.id }}" value="{{ candidate.id }}">
                     <label class="tick-box-label" for="cand-{{ candidate.id }}">
                     </label>
                   </td>
@@ -90,4 +90,39 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Keep track of the current selection for each position
+    const selections = {};
+
+    // 2. Get all radio buttons
+    const radios = document.querySelectorAll('.visually-hidden-radio');
+
+    radios.forEach(radio => {
+      // Initialize the tracker (in case browser remembers selection on reload)
+      if (radio.checked) {
+        selections[radio.name] = radio.id;
+      }
+
+      // 3. Add click listener
+      radio.addEventListener('click', function(e) {
+        const groupName = this.name; // The Position ID
+        const currentId = this.id;   // The Candidate ID
+
+        // 4. Check if this radio was ALREADY the selected one for this group
+        if (selections[groupName] === currentId) {
+          // If yes, the user is clicking it AGAIN -> So we uncheck it
+          this.checked = false;
+          selections[groupName] = null; // Clear the record
+        } else {
+          // If no, this is a new selection -> Record it
+          selections[groupName] = currentId;
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
